@@ -1,5 +1,7 @@
 from django.db import models
 
+from django.db import models
+
 from enum import Enum
 
 from django.contrib.auth.models import User
