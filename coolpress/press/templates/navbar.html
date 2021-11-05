@@ -1,51 +1,29 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-light">
-  <a class="navbar-brand" href="{% url 'index' %}">CoolPress</a>
-  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
-    <span class="navbar-toggler-icon"></span>
-  </button>
-    {% if subtitle %}
-{{subtitle}}
-{% endif %}
-  <div class="collapse navbar-collapse" id="navbarNavDropdown">
-    <ul class="navbar-nav ml-auto justify-content-end">
-      <li class="nav-item active">
-        <a class="nav-link" href="{% url 'posts-list' %}">News</span></a>
-      </li>
-      <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-          Cates
-        </a>
-        <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
-            {% for category in categories %}
-                <a class="dropdown-item" href="#">{{category.label}}</a>
-            {% endfor %}
+{% if is_paginated %}
+<nav aria-label="...">
+  <ul class="pagination justify-content-center">
+      <li class="page-item {% if page_obj.number == 1 %}disabled{% endif %}">
+            <a class="page-link" href="?page=1{%if search_data %}&q={{search_data}}{%endif%}">&laquo; First</a>
+        </li>
+      <li class="page-item {% if not page_obj.has_previous %} disabled {% endif %}">
+      <a class="page-link"
+         href="{% if page_obj.has_previous %}
+         ?page={{page_obj.previous_page_number}}
+                 {%else%}#
+      {%endif%}{%if search_data %}&q={{search_data}}{%endif%}" tabindex="-1">Previous</a>
+    </li>
+    <li class="page-item active">
+      <a class="page-link" href="#">Page {{page_obj.number}} of {{page_obj.paginator.num_pages}}</a>
+    </li>
+    <li class="page-item {% if not page_obj.has_next %} disabled {% endif %}">
+      <a class="page-link" href="{% if page_obj.has_next %}?page={{page_obj.next_page_number}}{%else%}#{%endif%}{%if search_data %}&q={{search_data}}{%endif%}">Next</a>
+    </li>
 
+      <li class="page-item
+      {% if page_obj.number == page_obj.paginator.num_pages %}
+      disabled
+      {% endif %}"><a class="page-link"
+                      href="?page={{ page_obj.paginator.num_pages }}{%if search_data %}&q={{search_data}}{%endif%}">Last &raquo;</a></li>
 
-            <div class="dropdown-divider"></div>
-            <a class="dropdown-item" href="{% url 'category-list' %}">Category List</a>
-
-        </div>
-      </li>
-
-        {% if user.is_authenticated %}
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" id="navUser" role="button"
-                   data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    {{ user.username }}
-                    {% if cooluser.gravatar_link %}
-                    <img class="gravatar-navbar-icon" src="{{cooluser.gravatar_link}}" alt="">
-                    {% endif %}
-                </a>
-                <div class="dropdown-menu" aria-labelledby="navUser">
-                    <a class="btn btn-danger" href="{% url 'logout' %}">Log Out</a>
-                </div>
-            </li>
-        {% else %}
-            <li class="nav-item">
-                <a class="btn btn-primary" href="{% url 'login' %}">Log In</a>
-            </li>
-            {% endif %}
-
-    </ul>
-  </div>
+  </ul>
 </nav>
+{% endif %}

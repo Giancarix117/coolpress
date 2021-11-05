@@ -1,5 +1,4 @@
 from django.forms import ModelForm, TextInput, Select, Textarea
-from django.forms import ModelForm, TextInput, Select, Textarea
 
 from press.models import Post, Category
 
