@@ -14,10 +14,20 @@
 
 </head>
 <body>
+
+
 <div class="container">
     {% include 'navbar.html' %}
     {% block content %}
     {% endblock %}
 </div>
+
+{% include 'pagination.html' %}
+
+{% include 'stats_table.html' %}
+
+{% include 'footer.html' %}
+
 </body>
+
 </html>
