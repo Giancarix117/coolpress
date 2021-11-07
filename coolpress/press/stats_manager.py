@@ -1,85 +1,85 @@
-from collections import Counter
-from dataclasses import dataclass
+from enum import Enum
 
-import numpy as np
-from django.db.models import QuerySet
+from django.contrib.auth.models import User
+from django.db import models
+from django.urls import reverse
 
-from wordcloud import WordCloud, STOPWORDS
-from press.models import Post
-
-
-class StatsDict(dict):
-
-    def top(self, limit=10):
-        return self._get_top(self, limit)
-
-    @staticmethod
-    def _get_top(dict_to_limit, limit=10):
-        sorted_items = sorted(dict_to_limit.items(), key=lambda item: (-item[1], item[0]))
-        keys = [key for key, val in sorted_items][:limit]
-        top_dict = StatsDict()
-        for key in keys:
-            value = dict_to_limit[key]
-            top_dict[key] = value
-
-        return top_dict
-
-    @classmethod
-    def from_msg(cls, msg: str):
-        tokens = msg.casefold().split(' ')
-        return cls(**Counter(tokens))
+from press.user_management import get_gravatar_link, get_github_repositories
 
 
-    def weighted_dict(self):
-        new_dict = {}
-        for word, cnt in self.items():
-            if word not in STOPWORDS:
-                new_weight = len(word) * cnt
-                new_word = word.replace(',', '')
-                new_dict[new_word] = new_weight
-        return StatsDict(**new_dict)
+class CoolUser(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    github_profile = models.CharField(max_length=150, null=True, blank=True)
+    gh_repositories = models.IntegerField(null=True, blank=True)
+    gravatar_link = models.CharField(max_length=400, null=True, blank=True)
 
-    def get_word_cloud(self, limit=10):
-        x, y = np.ogrid[:300, :300]
+    def __str__(self):
+        user = self.user
+        return f'{user.first_name} {user.last_name} ({user.username})'
 
-        mask = (x - 150) ** 2 + (y - 150) ** 2 > 130 ** 2
-        mask = 255 * mask.astype(int)
+    def save(self, *args, **kwargs):
+        super(CoolUser, self).save(*args, **kwargs)
 
-        wc = WordCloud(background_color='white', mask=mask)
-        weighted_dict = self.weighted_dict()
-        top_values = self._get_top(weighted_dict, limit)
-        wc.fit_words(top_values)
-        return wc
+        if self.user.email:
+            email = self.user.email
+            gravatar_link = get_gravatar_link(email)
+            if gravatar_link != self.gravatar_link:
+                self.gravatar_link = gravatar_link
+                self.save()
+        gh_repositories = None
+        if self.github_profile:
+            gh_repositories = get_github_repositories(self.github_profile)
 
-    def to_file(self, file_path, limit=10):
-        wc = self.get_word_cloud(limit)
-        wc.to_file(file_path)
-        return file_path
+        if gh_repositories != self.gh_repositories:
+            self.gh_repositories = gh_repositories
+            self.save()
 
-    def to_svg(self, limit=10):
-        wc = self.get_word_cloud(limit)
-        return wc.to_svg()
+class Category(models.Model):
+    class Meta:
+        verbose_name_plural = "categories"
 
-@dataclass
-class Stats:
-    titles: StatsDict
-    bodies: StatsDict
+    label = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=200, unique=True)
 
-    @property
-    def all(self) -> StatsDict:
-        return StatsDict({**self.titles, **self.bodies})
+    def get_absolute_url(self):
+        return reverse('category-detail', kwargs={'pk': self.pk})
 
-
-def extract_stats_from_single_post(post: Post) -> Stats:
-    posts_query = Post.objects.filter(id=post.id)
-    return extract_stats_from_posts(posts_query)
+    def __str__(self):
+        return f'{self.slug}'
 
 
-def extract_stats_from_posts(qs_post: QuerySet[Post]) -> Stats:
-    titles_list = qs_post.values_list('title', flat=True)
-    titles_msg = ' '.join(titles_list)
-    bodies_list = qs_post.values_list('body', flat=True)
-    bodies_msg = ' '.join(bodies_list)
-    titles = StatsDict.from_msg(titles_msg)
-    bodies = StatsDict.from_msg(bodies_msg)
-    return Stats(titles, bodies)
+class PostStatus(Enum):
+    DRAFT = 'DRAFT'
+    PUBLISHED = 'PUBLISHED'
+
+
+POST_LABELED_STATUS = [
+    (PostStatus.DRAFT.value, 'Draft'),
+    (PostStatus.PUBLISHED.value, 'Published post'),
+]
+
+
+class Post(models.Model):
+    title = models.CharField(max_length=400)
+    body = models.TextField()
+    image_link = models.CharField(max_length=400, null=True, blank=True)
+
+    word_cloud_link = models.CharField(max_length=400, null=True, blank=True)
+
+    source_link = models.CharField(max_length=400, null=True, blank=True)
+    source_label = models.CharField(max_length=400, null=True, blank=True)
+
+    status = models.CharField(
+        max_length=32,
+        choices=POST_LABELED_STATUS,
+        default=PostStatus.DRAFT,
+    )
+
+    author = models.ForeignKey(CoolUser, on_delete=models.CASCADE)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+
+    creation_date = models.DateTimeField(auto_now_add=True)
+    last_update = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'{self.title} - by {self.author.user.username}'
