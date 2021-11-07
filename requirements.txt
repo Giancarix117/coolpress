@@ -1,2 +1,4 @@
-django~=3.2.8
-press~=0.5.8
+django
+libgravatar
+beautifulsoup4
+wordcloud
